@@ -1,0 +1,658 @@
+---
+title: "CS5801 Coursework Template Proforma"
+author: "Amaboh Achu Ngu, 2212447"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: html_notebook
+version: 1.0
+---
+
+# 0. Instructions 
+
+# Table of Content
+1. [Organise and clean the data](#organise)
+  1.1 [Subset data](#subset)
+  1.2 [Data Quality and Analysis](#analysis)
+  1.3 [Data Cleaning](#cleaning)
+ 
+2. [Exploratory data analysis](#eda)
+3. [Modelling](#modelling)
+  3.1 [Analysis plan](#anlysesexplanation)
+  3.2 [Build Model](#buildmodel)
+  3.3 [Critique Model](#critique)
+  3.4 [Suggested Improvements](#suggestions)
+4. [Extension work](#extension)
+  
+
+```{r}
+# Add code here to load any required libraries with `library()`.  
+# We suggest you use `install.package()` for any required packages externally to this document 
+# since installation only need be done once.
+```
+
+
+# 1. Organise and clean the data {#organise}
+
+## 1.1 Subset the data into the specific dataset allocated {#subset}
+
+In the following exercise we would be using the following packages to explore and visualize our data
+
+  - tree package for graphical illustration of relations between variables
+  - validate package would be used to check our data types
+  
+  - tidyr is a collection of packages with the following 
+    - ggplot2 package for graphical visualization
+    - dplyr and plyr package for data manipulation 
+  
+
+```{r}
+# Assign your student id into the variable SID, for example:
+library(tidyr)
+library(plyr)
+library(dplyr)
+library(validate)
+library(tree)
+library(ggplot2)
+library(psych)
+SID <- 2212447                 # This is an example, replace 2101234 with your actual ID
+SIDoffset <- (SID %% 100) + 1    # Your SID mod 100 + 1
+
+load("house-analysis.RDa")
+# Now subset the housing data set
+# Pick every 100th observation starting from your offset
+# Put into your data frame named mydf (you can rename it)
+mydf <- house.analysis[seq(from=SIDoffset,to=nrow(house.analysis),by=100),]
+```
+
+
+## 1.2 Data quality analysis{#analysis}
+  
+In order to assess the quality of our data we would proceed by inspecting the quality of our data and checking for inconsistencies. This would evolve a validation mechanism involving checks on mandatory data, data types, range and would evolve an iterative process of observing the data by seeking for understanding through visuals, transformation and modeling (CS5702, Week 5, Teaching materials). We would proceed with the following steps.
+
+  - Reviewing data,to determine the number characteristic of the data such as data types, missing values and number of rows and columns
+  - Analyze data to detect inconsistencies such as misspellings, erreneous entries, extreme values
+  - Modify or remove any data inconsistencies
+
+A. Quality inspection/review data: 
+  - Get and overview of data using the head() function.
+  - Check the data types using either str() or glimpse() function.
+  - Tabular inspection of the data using View() function. 
+  - Inspect the dataset to determine number of observations and features using nrows() and ncols() funciton     respectively. 
+  
+  
+B. Checking for inconsistencies 
+  - We would implement a set of logical rules to spot for inconsistencies of data types in data frame. 
+  - Visualize this inconsistency for efficient comprehension and interpretation. 
+  - Determine the number of missing observations using is.na() function. 
+  - Check for number of distinct values based on upon the results of the following 4 setps above.
+  - Visualize the number of categorical variables using a table to count their respective types using the         tabulate() function. 
+  - Inspect variables of the data based on the output of the rules implemented above. 
+  
+  
+
+```{r}
+head(mydf)
+```
+```{r}
+str(mydf)
+```
+
+
+
+```{r}
+View(mydf)
+summary(mydf)
+```
+```{r}
+nrow(mydf)
+ncol(mydf)
+```
+
+
+
+1.2 B
+```{r}
+mydf.rules <- validator(id = id >= 0,
+                        priceValue = price >= 100,
+                        mqValue = mq >= 2,
+                        floorValue = floor >= 1,
+                        roomValue = n_rooms >= 1,
+                        bathValue = n_bathrooms >= 1,
+                        terraceValue = is.element(has_terrace, c(0,1)),
+                        alarm = is.element(has_alarm, c(0,1)),
+                        heatingValue = is.element(heating, c("autonomous", "other")),
+                        parking = is.element(has_parking, c(0,1)),
+                        furnishing = is.element(is_furnished, c(0,1))
+                        )
+
+qual.check <- confront(mydf, mydf.rules)
+summary(qual.check)
+plot(qual.check, xlab="Validating the test")
+
+```
+
+
+```{r}
+sum(is.na(mydf))
+```
+
+```{r}
+min(mydf$mq)
+```
+
+```{r}
+min(mydf$n_rooms)
+```
+
+```{r}
+min(mydf$price)
+```
+
+
+```{r}
+table(mydf$heating)
+```
+
+
+```{r}
+table(mydf$n_bathrooms)
+```
+
+```{r}
+table(mydf$has_terrace)
+```
+
+```{r}
+table(mydf$has_air_conditioning)
+```
+
+```{r}
+table(mydf$has_alarm)
+```
+
+
+
+
+ 
+## 1.3 Data cleaning {#cleaning}
+
+  From the data analyses above there we observe a number of problem with 5 variables in our data and the the 5 variables and findings are discussed below. 
+      - has_terrace: We notice a wrong labeling in the form of misspelling of autonomous with autonomous by using the table function, which we rectify by querying the specific column with in the data set and assigning autonomous to it. 
+      
+      - n_rooms: We observe a negative value  a negative value which is logically incorrect since we see that the room range from 1 to 5 and we can not have a negative room. Thus we consider this as an imputation  error and  negative value is an imputation error thus I assume it to be 1 given that the number of rooms range from 1 - 5.
+      
+      - price: We observe a very low price value for house at 1 which is possible given the features of the house and the data set we use the median price to rectify this because the data is rightly skewed with  extreme positive outliers making the mean higher than the median which is not a best representation of the dataset.  
+ 
+      - mq: We observe has a value of 0 which at first sight seems like an outlier but is not logically feasible nor possible thus we rectify this my using the mean since it's best represent the central tendency of the data. 
+ 
+
+Other issues related to the data type: 
+For better comprehension we are changing our categorical variables of binary to str to facilitate visualizuation 
+
+We would be changing the data types of some the integer variables to categorical variables since we observe a binary format of 1 and 0, logical it stands for positive or negtative. This variables have the verb has and is and are the following:
+  - has_terrace: From int to categorical.
+  - has_alarm: From int to categorical.
+  - has_air_conditioning: From int to categorical.
+  - has_parking: From int to categorical.
+  - is_furnished: From int to categorical.
+  - heating: has just two levels of autonomous and other and thus is categorical. 
+  
+We remove the first column which is id because it would not be very useful when analyzing our dataset  
+```{r}
+
+mydf$price[mydf$price == 1] <- median(mydf$price)
+
+mydf$n_rooms[mydf$n_rooms == "-1"] <- 1
+mydf$heating [mydf$heating == "autonamous"] <- "autonomous"
+table(mydf$heating)
+
+mydf$has_terrace <- ifelse(mydf$has_terrace == 0 ,"no terrace", "has terrace")
+mydf$has_alarm <- ifelse(mydf$has_alarm == 0, "no alarm", "has alarm")
+mydf$has_parking <- ifelse(mydf$has_parking == 0, "no parking", "has parking")
+mydf$is_furnished <- ifelse(mydf$is_furnished == 0, "unfurnished", "furnished")
+mydf$has_air_conditioning <- ifelse(mydf$has_air_conditioning == 0, "no AC", "AC")
+
+table(mydf$has_alarm)
+
+
+mydf$has_terrace <- as.factor(mydf$has_terrace)
+mydf$has_air_conditioning <- as.factor(mydf$has_air_conditioning)
+mydf$has_alarm <- as.factor(mydf$has_alarm)
+mydf$has_parking <- as.factor(mydf$has_parking)
+mydf$is_furnished <- as.factor(mydf$is_furnished)
+mydf$heating <- as.factor(mydf$heating)
+str(mydf)
+
+mydf <- mydf[-c(1)]
+
+
+head(mydf)
+
+
+```
+
+
+
+# 2. Exploratory Data Analysis (EDA){#eda)}
+
+## 2.1 EDA plan
+
+Our Exploratory Data Analysis would follow an iterative process of providing a snapshot overview of the data to uncover patterns, formulate questions, provide responses through visuals, transforming and modeling(CS5702,Week 4 Teaching Materials). 
+
+This would be done by exploring our data in a tabular and graphical format to determine the distribution of variables, relationships between variables, seek for patterns and provide count of categorical variables in our data set. 
+
+  - We would explore our data graphically using histograms to determine distribution & the skewness of our data. 
+  - We would be using a bar plot to visualize the occurrence of certain categorical variables.
+  - A scatter plot to understand the relationship between two numeric vectors.
+  - We would be using box plot to visualize medians, quater distribution and outliers. 
+
+
+## 2.2 EDA and summary of results  
+
+we observe from the Barplot of Alarm Type by price range that a majority of the houses do have alarms and the houses on the high end price range of 405,000 upward all have alarms while the remaing houses all have alarms with just a handful not having alarms. 
+
+We can observe from the histogram of price and meter square that they're both rightly skewed and thus with positive outliers. 
+
+We observe that price is positively related with all variables but with the the highest correlation being between price and bath rooms and confirming the illustration earlier from our tree diagram, and least correlation at 0.01 for price and floor. We can also observe multicollinearity between indepedent variables and with Total squares and number of rooms having the highest at relationship, followed by total square meters at 0.4 and number of bathrooms. We can also observe a negative relationships between total square meters and floor, floor and rooms, and floor and number of bathrooms. 
+
+
+From the box plot of price and number of houses with 5 rooms with highes number of room has the highest median price and approximately the same median price with a 4 room house. While strangely 2 room houses have the least median price but with more outliers. We can also observe that houses with AC have a higher median price compared to house with no AC, and both have outliers.The median prices of houses with alarm is quite largee than those with no alarm and houses with no alarm have more outliers in terms of price. Houses with terrace have a higher price than those without terrace but with fewer outliers comapred to those with terrace.
+
+```{r}
+summary(mydf)
+
+```
+
+
+```{r}
+str(mydf)
+
+```
+
+
+```{r}
+plot(mydf)
+```
+
+
+```{r}
+df_price_by_alarm <- mydf %>%
+  group_by(price_range_by_100000 = cut(mydf$price, seq(1, 600000, 100000))) %>%
+  summarise(alarmCount  = table(has_alarm))
+
+head(df_price_by_alarm)
+
+df_price_by_alarm$AlarmType <-rownames(ifelse(df_price_by_alarm$alarmCount == 0 , "No Alarm", "Has Alarm"))
+
+
+df_price_by_alarm
+
+
+```
+
+
+
+
+
+```{r}
+ggplot(data=df_price_by_alarm, aes(x=df_price_by_alarm$alarmCount, y=df_price_by_alarm$price_range_by_100000, fill =AlarmType)) +geom_bar(stat="identity")+ xlab("Alarm proportion") + ylab(df_price_by_alarm$price_range_by_100000) + ggtitle(" Barplot of Alarm Type by price range") + labs(fill = "Alarm status") + theme_classic()
+```
+
+
+```{r}
+mydf %>%
+  count(has_alarm)
+
+```
+
+
+```{r}
+ggplot(mydf, aes(x=price)) +  geom_histogram(aes(y = ..density..), bins = 30) +
+  theme_bw()+ ggtitle("Histogram of Price") +  stat_function(fun = dnorm, args = list(mean = mean(mydf$price), sd = sd(mydf$price)), col = "#1b98e0", size = 1)
+
+```
+
+
+```{r}
+
+ggplot(mydf, aes(x=mq)) + geom_histogram(aes(y = ..density..), binwidth = 30) +
+  theme_bw()+ ggtitle("Histogram of Housing Square Meter") +  stat_function(fun = dnorm, args = list(mean = mean(mydf$mq), sd = sd(mydf$mq)), col = "green", size = 1)
+```
+```{r}
+head(mydf)
+
+```
+
+
+
+
+```{r}
+
+mydf.int <- mydf[c(1:5)]
+
+pairs.panels(mydf.int, 
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+head(mydf.int)
+```
+
+
+```{r}
+ggplot(mydf, aes(mq, price)) + geom_point() + theme_bw() + ggtitle("Price vs Total Metres Square") + xlab("Total metres square") + ylab("Price") +  geom_smooth(method='lm', formula=y~x)
+```
+
+
+```{r}
+ggplot(mydf, aes(n_rooms, mq)) + geom_point() + theme_bw() + ggtitle("Square metres vs Number of rooms") + xlab("Number of rooms") + ylab("Metres square") +  geom_smooth(method='lm', formula=y~x)
+```
+
+
+
+```{r}
+ggplot(mydf, aes(x=floor)) + geom_bar() +
+  theme_classic() + ggtitle("Barplot depicting number of floors ")
+```
+
+```{r}
+clonemydf<-mydf
+clonemydf$floor<-as.factor(mydf2$floor)
+str(clonemydf)
+ggplot(clonemydf, aes(x=floor, y=price)) + geom_boxplot() +
+  theme_classic() + ggtitle("Boxplot of Floor vs Price")
+
+```
+
+
+```{r}
+clonemydf$n_rooms<-as.factor(mydf2$n_rooms)
+ggplot(mydf, aes(x=n_rooms)) + geom_bar() + theme_classic() + ggtitle("Barplot depicting number of rooms ")
+```
+
+
+```{r}
+clonemydf$n_rooms<-as.factor(mydf2$n_rooms)
+ggplot(mydf2, aes(n_rooms, price)) + geom_boxplot() +
+  theme_classic() + ggtitle("Boxplot of number of room v/s Price")
+```
+
+
+```{r}
+ggplot(mydf, aes(x=is_furnished)) + geom_bar() + theme_classic() +ggtitle("Boxplot depicting Furnished/ Unfurnished")
+
+```
+
+
+```{r}
+ggplot(mydf, aes(x=is_furnished, y=price)) + geom_boxplot() + theme_classic() + ggtitle("Boxplot depicting Furnished/ Unfurnished")
+```
+
+
+```{r}
+ggplot(mydf, aes(x=has_terrace)) + geom_bar() +
+  theme_classic() + ggtitle("Barplot depicting Terrace availability")
+```
+
+
+
+```{r}
+ggplot(mydf, aes(x=has_terrace, y=price)) + geom_boxplot() +
+  theme_classic() + ggtitle("Barplot depicting Terrace availability")
+```
+ 
+
+```{r}
+ggplot(mydf, aes(x=has_air_conditioning)) + geom_bar() + theme_classic() + ggtitle("Barplot depicting AC availability")
+```
+
+
+```{r}
+ggplot(mydf, aes(x=has_air_conditioning, price)) + geom_boxplot() + theme_classic() + ggtitle("Barplot depicting AC availability")
+```
+ 
+
+```{r}
+ggplot(mydf, aes(x=has_parking)) + geom_bar() + theme_classic() + ggtitle("Barplot depicting Parking availability")
+```
+
+
+
+```{r}
+ggplot(mydf, aes(x=has_parking, price)) + geom_boxplot() + theme_classic() + ggtitle("Barplot depicting Parking availability")
+```
+
+```{r}
+ggplot(mydf, aes(x=has_alarm)) + geom_bar() + theme_classic() + ggtitle("Barplot depicting Alarm availability")
+```
+
+
+
+```{r}
+ggplot(mydf, aes(x=has_alarm, price)) + geom_boxplot() + theme_classic() + ggtitle("Barplot depicting Alarm availability")
+```
+
+
+```{r}
+ggplot(mydf, aes(x=heating)) + geom_bar() + theme_classic() + ggtitle("Barplot of Heating")
+```
+
+
+```{r}
+ggplot(mydf, aes(x=heating, price)) + geom_boxplot() + theme_classic() + ggtitle("Boxplot of Type of heating v/s price")
+```
+W
+
+```{r}
+ggplot(mydf, aes(x=n_bathrooms)) + geom_bar() + theme_classic() + ggtitle("Barplot of Number of Bathrooms")
+```
+
+
+```{r}
+clonemydf$n_bathrooms <- as.factor(clonemydf$n_bathrooms)
+ggplot(clonemydf, aes(x=n_bathrooms, price)) + geom_boxplot() + theme_classic() + ggtitle("Boxplot of Number of Bathrooms")
+
+```
+
+
+
+## 2.3 Additional insights and issues
+
+
+-Insights 
+  1 room houses have a higher median price compared to 2 and 3 room houses. We observe a stepwise progresion in price from 2 room houses upward. 
+
+From the boxplot of price and floor we cannot observe a clear pattern and this confirms the low correlation from the correlation matrix map at 0.01
+- Issues
+From the skweness of the distribution we observe that positive outliers make the mean to be higher the median and the mode in general. Thus the mean with a bad measure of central tendency thus would use median as a measure of central tendency of our distribution. 
+
+From our boxplot between price and floor we can really determine the 2 and the 4 quarter of the 7 and 9 floor. It is equally difficult to determine the hindquarter range of price and number of one rooms, this is due to the limited amount of data  
+
+
+
+# 3. Modelling {#modelling}
+
+## 3.1 Explain your analysis plan {#anlysesexplanation}
+
+
+Our analyses would be be based on the statistical analyses process of PPDAC(Problem, Plan, Data, Analysis and Conclusion) (CS5701, week 6 Teaching materials):
+- Problem: We would define the problem 
+- Data collection: This was done earlier in section 1.1 and 1.3.
+- Analysis: This evolves exploring our data using graphs and tables, which was done in section 1.2 and 2.2.
+  - Frame our Problem and determine how many columns in our data frame.
+  - Determine our dependent and independent variables.
+  - Determine the data type for our independent variable and also determine the data types for  our dependent variables.
+  - Determine the appropriate model to use 
+  - Start with maximal model
+  - Use step function to derive the minimal adequate model
+
+## 3.2 Build a model for property price{#buildmodel}
+
+
+```{r}
+names(mydf)
+summary(mydf)
+
+head(mydf)
+
+mydfNum <- mydf[-c(6,7,8,9,10,11)]
+
+head(mydfNum)
+
+pairs(mydfNum, panel = panel.smooth)
+```
+
+
+The diagram above illustrates the relationship between numerical variables in our mutated dataset of numerical variables only. 
+
+
+```{r}
+mydf.tree <- tree(mydf$price~., data = mydf)
+plot(mydf.tree)
+text(mydf.tree)
+
+```
+This illustrates that number of bathrooms (n_bathrooms) affects houses prices the most, as depicted with longer by the longer branch in the tree which represents deviance. Total meters square (mq) too affects prices at both the low and high end. The figure at the bottom of the tree are the home prices. From the tree diagram we can derive the interaction structure of the data which is not complex. The cut off point which separates high and low bathroom is 1.5. The right branch represents houses at higher prices and their relationship with other variables while that on left side represents houses with lower prices. 
+
+```{r}
+pm.lm <- lm(mydf$price ~ mydf$mq + mydf$floor + mydf$n_rooms + mydf$n_bathrooms + mydf$has_terrace + mydf$has_alarm + mydf$heating + mydf$has_air_conditioning + mydf$has_parking + mydf$is_furnished)
+
+summary(pm.lm)
+```
+
+
+```{r}
+plot(pm.lm)
+```
+
+
+```{r}
+mydfOp <- step(pm.lm)
+plot(mydfOp)
+```
+```{r}
+summary(mydfOp)
+```
+
+
+
+```{r}
+min.model <- lm(formula = mydf$price ~ mydf$mq + mydf$n_bathrooms + mydf$has_terrace + 
+    mydf$heating)
+summary(min.model)
+plot(min.model)
+
+```
+
+
+
+## 3.3 Critique model using relevant diagnostics {#critique}
+
+Observing the Residual vs Fitted plot we notice a funnel like sharp indicating heteroskedasticity which is the an indication that the residuals are not constant across observations. More so, we observe from Normal QQ plot that our data is not normally distributed and has outliers as we observe and s like curvature. 
+
+We use R square to provide relationship between our model and the dependent variable. In our model we observe an R square of  0.2397, which means our model explains 23.97% of the dependent variable and is statistically significant with a very low p value. However in our maximal model we have just three statistical significant variables being total square meters, number of bath rooms, has terrace and heating. 
+
+After optimizing our model using the step function,we get a slightly lower R square and a higher F Statistic for the minimal model compared to the maximal model model. 
+
+
+## 3.4 Suggest improvements to your model {#suggestions}
+
+- We would be using the log function to improve our initial model since we observe heteroskedasticity and non normal distribution.
+- We would proceed to optimize our transform model by using the step function.
+
+
+From our results we do not perceive heteroskedasticity from the Residual vs Fitted plot and we observe a smooth line on the Normal QQ plot, indicating a normal distribution. However, we get a lower R square which is high statically significant value compared to our initial model. Thus we can conclude that though the model is suitable it is not a good fit for this data. 
+
+
+```{r}
+tranform.model.Opt <- lm(log(mydf$price) ~ mydf$mq + mydf$n_rooms + mydf$n_bathrooms + 
+    mydf$has_terrace + mydf$has_alarm + mydf$heating)
+
+summary(tranform.model.Opt)
+plot(tranform.model.Opt)
+
+
+ 
+
+#transform.in.model <-step(min.model.Opt)
+#summary(transform.in.model)
+#plot(transform.in.model)
+```
+
+ 
+ 
+```{r}
+model.opt <- step(tranform.model.Opt)
+summary(tranform.model.Opt)
+```
+ 
+ 
+# 4. Extension work 4.{#extension}
+
+## 4.1 Model the likelihood of a property being furnished (using the is_furnished variable provided).
+
+Plan for analyses 
+- Define our problem
+- Determine our dependent variable and independent variable and their data types
+- Collect and clean the data and we did most in the EDA phase at 2.1 and cleaning phase 1.2
+- Explore relationships graphically with numerical variables
+- Formulate our model and modeling technique which in this case would be Logistic regression and a GLM (Generalized Linear Model) respectively. 
+- Optimize our model with the step function.
+- Transform our Model
+
+Model described and critique.
+
+A logistic regression would be appropriate since it explains the relation between binary target variables and explanatory variables being numerical and categorical (CS5701, Week 7). 
+We would proceed with the maximal model because after analyzing and cleaning the data we have no issues to report. 
+
+We observe from our results that one explanatory variable is significant which is has condition, while the rest are not significant. 
+
+From the odds ratio we can see that for one unit change price and Total square metres, the odds of being furnished increases by very insignificant margin of 1.0000001 and 1.0017779  respectively. Where as the unit change in floor and number of bathrooms reduces the odds of being furnished. Overall a unit change in Air Condition, Alarm, Heating, and Parking  significantly increase the odds of an house being furnished. 
+
+
+
+```{r}
+ggplot(mydf, aes(x=is_furnished, y=price))+ geom_boxplot() + theme_classic()+ ggtitle("Price vs Furnished type ")
+ggplot(mydf, aes(x=is_furnished, y=n_rooms))+ geom_boxplot() + theme_classic()+ ggtitle("Number of Rooms vs Furnished type ")
+ggplot(mydf, aes(x=is_furnished, y=n_bathrooms))+ geom_boxplot() + theme_classic()+ ggtitle("Number of bathrooms vs Furnished type ")
+ggplot(mydf, aes(x=is_furnished, y=mq))+ geom_boxplot() + theme_classic()+ ggtitle("Number of bathrooms vs Furnished type ")
+
+```
+
+
+```{r}
+mydf2.glm <- glm(mydf$is_furnished ~ mydf$price +  mydf$mq + mydf$floor + mydf$n_rooms + mydf$n_bathrooms + mydf$has_terrace + mydf$has_alarm + mydf$heating + mydf$has_air_conditioning + mydf$has_parking, family = binomial)
+
+summary(mydf2.glm)
+
+step(mydf2.glm)
+
+
+```
+
+```{r}
+mydt.stepBi <- glm(formula = mydf$is_furnished ~ mydf$has_air_conditioning, 
+    family = binomial)
+
+summary(mydt.stepBi)
+
+exp(coef(mydt.stepBi))
+```
+
+
+```{r}
+exp(coef(mydf2.glm))
+
+```
+
+# References  
+CS5702 Teaching materials (2022). Week 5-lecture 5: Data Quality, cleaning, and imputation
+
+CS5702 Teaching materials (2022). Week 4-lecture 4: Exploratory data analysis (EDA)
+
+CS7502 Teaching materials (20022). Week 7-Lecture 7: Logistic Regression
+
+CS5701 Teaching materials (2022). Week 9-lecture 9: QDA in the wild
+
+
