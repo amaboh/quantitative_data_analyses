@@ -19,3 +19,7 @@ Some information regarding the variables below.
 | has_parking              | Property has parking                                                         |
 | Is_furnished             |     Was the property sold with its contents (furnishings) or   not? (0,1)    |
 
+
+## Objective
+
+Main Objective is to created an analysis of house pricing based on the different variables provided.
